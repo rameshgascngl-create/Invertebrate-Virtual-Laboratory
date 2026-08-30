@@ -1,0 +1,139 @@
+--- a/app/src/main/assets/www/index.html
++++ b/app/src/main/assets/www/index.html
+@@ -8,7 +8,7 @@
+ <meta name="theme-color" content="#071a1a">
+ <meta name="color-scheme" content="dark">
+ <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline'; img-src data:; font-src data:; media-src data:; connect-src 'none'; object-src 'none'; frame-src 'none'; base-uri 'none'; form-action 'none'">
+-<title>Cockroach Virtual Dissection Laboratory v2.0</title>
++<title>Cockroach Virtual Dissection Laboratory v2.1.1</title>
+ <style>
+   html{background:#071a1a;color-scheme:dark;-webkit-text-size-adjust:100%;text-size-adjust:100%}
+   body{margin:0;min-width:280px;min-height:100vh;min-height:100dvh;background:#071a1a;color:#f5f7f4}
+@@ -306,6 +306,22 @@
+     #cockroach-lab-v1 .v2-plate .micro-label{font-size:10.5px;font-weight:700;fill:#3f3128;paint-order:stroke fill;stroke:#f4ead4;stroke-width:2.6px}
+     #cockroach-lab-v1 .v2-plate-actions{display:flex;justify-content:flex-end;margin-top:7px}
+     #cockroach-lab-v1 .v2-plate-actions .btn{min-height:34px;padding:5px 9px;font-size:.75rem;background:#efe4cc;color:#281e17;border-color:#76654f}
++    /* v2.1.1: organ-name driven anatomical blink/highlight */
++    #cockroach-lab-v1 .v2-callout{cursor:pointer;outline:none}
++    #cockroach-lab-v1 .v2-callout .labeltext{pointer-events:all}
++    #cockroach-lab-v1 .v2-callout:hover .labeltext,#cockroach-lab-v1 .v2-callout:focus-visible .labeltext{fill:#7a1f16;stroke:#fff3d6;stroke-width:4px;text-decoration:underline}
++    #cockroach-lab-v1 .v2-callout:hover .labelline,#cockroach-lab-v1 .v2-callout:focus-visible .labelline{stroke:#a12a1f;stroke-width:2.4}
++    #cockroach-lab-v1 .v2-callout:hover .labeldot,#cockroach-lab-v1 .v2-callout:focus-visible .labeldot{fill:#c33125;stroke:#fff3d6;stroke-width:2}
++    #cockroach-lab-v1 .v2-organ-buttons{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
++    #cockroach-lab-v1 .v2-organ-button{min-height:34px;padding:5px 8px;font-size:.72rem;border:1px solid #6e604d;background:#f4ead4;color:#33241c;border-radius:999px;font-weight:720}
++    #cockroach-lab-v1 .v2-organ-button:focus-visible{outline:3px solid var(--ring);outline-offset:2px}
++    #cockroach-lab-v1 .v2-organ-help{margin-top:7px;font-size:.7rem;font-weight:650;color:#4d4034}
++    #cockroach-lab-v1 .v2-organ-blink{transform-box:fill-box;transform-origin:center;animation:v2-organ-blink .34s ease-in-out 6!important;filter:drop-shadow(0 0 8px #fff7bf) drop-shadow(0 0 15px #ffb000)!important}
++    #cockroach-lab-v1 .v2-organ-halo{fill:rgba(255,221,74,.13);stroke:#ffb000;stroke-width:4;vector-effect:non-scaling-stroke;pointer-events:none;animation:v2-halo-blink .34s ease-in-out 6}
++    @keyframes v2-organ-blink{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.28;transform:scale(1.055)}}
++    @keyframes v2-halo-blink{0%,100%{opacity:.95;stroke-width:3}50%{opacity:.18;stroke-width:8}}
++    @media(prefers-reduced-motion:reduce){#cockroach-lab-v1 .v2-organ-blink{animation:v2-organ-safe-highlight .01ms linear 1!important;filter:drop-shadow(0 0 10px #ffb000)!important}#cockroach-lab-v1 .v2-organ-halo{animation:none!important;opacity:1!important}}
++    @keyframes v2-organ-safe-highlight{from{opacity:1}to{opacity:1}}
+     #cockroach-lab-v1 .v2-image-modal{position:fixed;inset:0;z-index:10000;background:rgba(3,10,10,.94);display:flex;align-items:center;justify-content:center;padding:10px}
+     #cockroach-lab-v1 .v2-image-modal[hidden]{display:none!important}
+     #cockroach-lab-v1 .v2-image-modal-card{width:min(1200px,100%);max-height:96dvh;overflow:auto;background:#d8ccb2;color:#231a15;border:1px solid #8b795f;border-radius:14px;box-shadow:0 18px 55px rgba(0,0,0,.55);padding:10px}
+@@ -331,7 +347,7 @@
+   <header class="lab-header">
+     <div>
+       <h1 class="lab-title" id="appTitle">Virtual Cockroach Dissection Laboratory</h1>
+-      <p class="lab-subtitle" id="appSubtitle"><i>Periplaneta americana</i> · Undergraduate Zoology · Practical-first bilingual teaching release v2.1.0</p>
++      <p class="lab-subtitle" id="appSubtitle"><i>Periplaneta americana</i> · Undergraduate Zoology · Practical-first bilingual teaching release v2.1.1</p>
+     </div>
+     <div class="lab-header-actions">
+       <div role="group" aria-label="Language" id="languageGroup">
+@@ -809,7 +825,7 @@
+     const UI={
+       en:{
+         appTitle:"Virtual Cockroach Dissection Laboratory",ariaSystems:"Organ systems",ariaModes:"Learning mode",ariaLanguage:"Language",ariaSex:"Specimen sex",ariaTools:"Dissection tools",ariaTargets:"Current practical targets",ariaStructures:"Anatomical structures",ariaControls:"Learning and specimen controls",ariaProgress:"Practical progress",workspace:"Dissection workspace",
+-        appSubtitle:"Periplaneta americana · Undergraduate Zoology · Practical-first bilingual teaching release v2.1.0",
++        appSubtitle:"Periplaneta americana · Undergraduate Zoology · Practical-first bilingual teaching release v2.1.1",
+         digestive:"Digestive",respiratory:"Respiratory",circulatory:"Circulatory",nervous:"Nervous",reproductive:"Reproductive",
+         guided:"Guided practical",explore:"Explore anatomy",assess:"Assessment",male:"Male",female:"Female",
+         procedure:"Guided practical",selectTool:"Select a tool",magnifier:"Magnifier",forceps:"Fine forceps",pins:"Dissecting pins",scissors:"Fine scissors",dropper:"Saline dropper",probe:"Blunt probe",
+@@ -830,7 +846,7 @@
+       },
+       ta:{
+         appTitle:"கரப்பான் மெய்நிகர் பிரித்தறிதல் ஆய்வகம்",ariaSystems:"உறுப்பு மண்டலங்கள்",ariaModes:"கற்றல் முறை",ariaLanguage:"மொழி",ariaSex:"மாதிரியின் பாலினம்",ariaTools:"பிரித்தறிதல் கருவிகள்",ariaTargets:"தற்போதைய செய்முறை இலக்குகள்",ariaStructures:"உடற்கூற்று அமைப்புகள்",ariaControls:"கற்றல் மற்றும் மாதிரிக் கட்டுப்பாடுகள்",ariaProgress:"செய்முறை முன்னேற்றம்",workspace:"பிரித்தறிதல் பணிப்பரப்பு",
+-        appSubtitle:"Periplaneta americana · இளநிலை விலங்கியல் · செய்முறை முதன்மை இருமொழிக் கற்பித்தல் பதிப்பு v2.0",
++        appSubtitle:"Periplaneta americana · இளநிலை விலங்கியல் · செய்முறை முதன்மை இருமொழிக் கற்பித்தல் பதிப்பு v2.1.1",
+         digestive:"செரிமான மண்டலம்",respiratory:"சுவாச மண்டலம்",circulatory:"இரத்த ஓட்ட மண்டலம்",nervous:"நரம்பு மண்டலம்",reproductive:"இனப்பெருக்க மண்டலம்",
+         guided:"வழிகாட்டப்பட்ட செய்முறை",explore:"உடற்கூற்றை ஆராய்க",assess:"மதிப்பீடு",male:"ஆண்",female:"பெண்",
+         procedure:"வழிகாட்டப்பட்ட செய்முறை",selectTool:"கருவியைத் தேர்ந்தெடுக்கவும்",magnifier:"பெருக்கிக்கண்ணாடி",forceps:"நுண் இடுக்கி",pins:"பிரித்தறியும் ஊசிகள்",scissors:"நுண் கத்தரிக்கோல்",dropper:"உப்புநீர்த் துளிப்பான்",probe:"முனை மழுங்கிய ஆய்வூசி",
+@@ -1066,7 +1082,7 @@
+     root.dataset.initialized="true";
+     const q=(selector)=>root.querySelector(selector);
+     const qa=(selector)=>Array.from(root.querySelectorAll(selector));
+-    const APP_VERSION="2.1.0";
++    const APP_VERSION="2.1.1";
+     const BACKUP_ID="virtual-cockroach-dissection-laboratory";
+     const SESSION_KEY="cockroach_lab_session_v1";
+     const MODULE_KEYS=["digestive","respiratory","circulatory","nervous","male","female"];
+@@ -1383,7 +1399,7 @@
+     function applyLanguage(){
+       cancelSpeech();
+       document.documentElement.lang=state.language==="ta"?"ta":"en";
+-      document.title=textFor(UI.en.appTitle+" — v2.0",UI.ta.appTitle+" — v2.0");
++      document.title=textFor(UI.en.appTitle+" — v2.1.1",UI.ta.appTitle+" — v2.1.1");
+       setBilingual(q("#appTitle"),UI.en.appTitle,UI.ta.appTitle);
+       setBilingual(q("#appSubtitle"),UI.en.appSubtitle,UI.ta.appSubtitle);
+       q("#systemNav").setAttribute("aria-label",ui("ariaSystems"));q("#modeGroup").setAttribute("aria-label",ui("ariaModes"));q("#languageGroup").setAttribute("aria-label",ui("ariaLanguage"));q("#sexSwitch").setAttribute("aria-label",ui("ariaSex"));q("#toolbox").setAttribute("aria-label",ui("ariaTools"));q("#targetButtons").setAttribute("aria-label",ui("ariaTargets"));q("#structureButtons").setAttribute("aria-label",ui("ariaStructures"));q("#modeBarRegion").setAttribute("aria-label",ui("ariaControls"));q("#progressRegion").setAttribute("aria-label",ui("ariaProgress"));setBilingual(q("#workspaceHeading"),UI.en.workspace,UI.ta.workspace);
+@@ -1753,7 +1769,8 @@
+ 
+   function callout(x1,y1,x2,y2,text,anchor='start'){
+     const tx=anchor==='end'?x2-5:x2+5;
+-    return `<path class="labelline" d="M${x1} ${y1} L${x2} ${y2}" fill="none"/><circle class="labeldot" cx="${x1}" cy="${y1}" r="3.2"/><text x="${tx}" y="${y2+4}" text-anchor="${anchor}" class="labeltext">${text}</text>`;
++    const safeText=String(text).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
++    return `<g class="v2-callout" data-v2-x="${x1}" data-v2-y="${y1}" data-v2-name="${safeText}" role="button" tabindex="0" aria-label="Highlight ${safeText}"><path class="labelline" d="M${x1} ${y1} L${x2} ${y2}" fill="none"/><circle class="labeldot" cx="${x1}" cy="${y1}" r="3.2"/><text x="${tx}" y="${y2+4}" text-anchor="${anchor}" class="labeltext">${safeText}</text></g>`;
+   }
+ 
+   function base(id){return `${commonDefs(id)}
+@@ -1883,11 +1900,47 @@
+   const grid=document.getElementById('v2PlateGrid');
+   if(grid){[
+     ['Digestive system · செரிமான மண்டலம்',plateDigestive()],['Nervous system · நரம்பு மண்டலம்',plateNervous()],['Male reproductive system · ஆண் இனப்பெருக்க மண்டலம்',plateMale()],['Female reproductive system · பெண் இனப்பெருக்க மண்டலம்',plateFemale()],['Mouthparts mount · வாயுறுப்புகள் மவுண்ட்',plateMouth()]
+-  ].forEach(([title,svg])=>{const d=document.createElement('div');d.className='v2-plate';d.innerHTML=`<h4>${title}</h4>${svg}<div class="v2-plate-actions"><button type="button" class="btn v2-open-image">View large · பெரிதாக்கு</button></div>`;grid.appendChild(d)})}
++  ].forEach(([title,svg])=>{
++    const d=document.createElement('div');d.className='v2-plate';
++    d.innerHTML=`<h4>${title}</h4>${svg}<div class="v2-organ-help">Tap an organ name to blink its position · உறுப்பு பெயரைத் தொட்டால் அதன் இடம் மின்னும்</div><div class="v2-organ-buttons" aria-label="Organ highlight controls"></div><div class="v2-plate-actions"><button type="button" class="btn v2-open-image">View large · பெரிதாக்கு</button></div>`;
++    const controls=d.querySelector('.v2-organ-buttons');
++    d.querySelectorAll('.v2-callout').forEach(c=>{const b=document.createElement('button');b.type='button';b.className='v2-organ-button';b.dataset.v2X=c.dataset.v2X;b.dataset.v2Y=c.dataset.v2Y;b.dataset.v2Name=c.dataset.v2Name;b.textContent=c.dataset.v2Name;controls.appendChild(b)});
++    grid.appendChild(d)
++  })}
++
++  function findV2Organ(svg,x,y){
++    let best=null,bestArea=Infinity;
++    svg.querySelectorAll('path,ellipse,circle,polygon,polyline,rect,line').forEach(el=>{
++      if(el.closest('.v2-callout')||el.classList.contains('labelline')||el.classList.contains('labeldot')||el.classList.contains('v2-organ-halo'))return;
++      let b;try{b=el.getBBox()}catch(_){return}
++      if(!b||b.width<=0||b.height<=0)return;
++      if(b.width>640&&b.height>340)return;
++      const pad=5;if(x<b.x-pad||x>b.x+b.width+pad||y<b.y-pad||y>b.y+b.height+pad)return;
++      const area=Math.max(1,b.width*b.height);if(area<bestArea){best=el;bestArea=area}
++    });
++    return best;
++  }
++  function flashV2Organ(svg,x,y,name){
++    x=Number(x);y=Number(y);if(!Number.isFinite(x)||!Number.isFinite(y))return;
++    const target=findV2Organ(svg,x,y);
++    if(target){target.classList.remove('v2-organ-blink');void target.getBoundingClientRect();target.classList.add('v2-organ-blink');setTimeout(()=>target.classList.remove('v2-organ-blink'),2300)}
++    svg.querySelectorAll('.v2-organ-halo').forEach(n=>n.remove());
++    const halo=document.createElementNS('http://www.w3.org/2000/svg','circle');halo.setAttribute('class','v2-organ-halo');halo.setAttribute('cx',x);halo.setAttribute('cy',y);halo.setAttribute('r','24');halo.setAttribute('aria-hidden','true');svg.appendChild(halo);setTimeout(()=>halo.remove(),2300);
++    const plate=svg.closest('.v2-plate');if(plate){const help=plate.querySelector('.v2-organ-help');if(help)help.textContent=(name||'Selected structure')+' highlighted · தேர்ந்த உறுப்பு மின்னுகிறது'}
++  }
++  function activateV2Callout(callout){const svg=callout.closest('svg');if(svg)flashV2Organ(svg,callout.dataset.v2X,callout.dataset.v2Y,callout.dataset.v2Name)}
+ 
+   const modal=document.createElement('div');modal.className='v2-image-modal';modal.hidden=true;modal.setAttribute('role','dialog');modal.setAttribute('aria-modal','true');modal.innerHTML=`<div class="v2-image-modal-card"><div class="v2-image-modal-head"><div class="v2-image-modal-title"></div><button type="button" class="btn v2-image-modal-close" aria-label="Close enlarged image">×</button></div><div class="v2-image-modal-body"></div></div>`;root.appendChild(modal);
+   const closeLarge=()=>{modal.hidden=true;modal.querySelector('.v2-image-modal-body').innerHTML='';document.body.style.overflow=''};
+-  root.querySelectorAll('.v2-plate').forEach(plate=>{const open=()=>{modal.querySelector('.v2-image-modal-title').textContent=plate.querySelector('h4').textContent;modal.querySelector('.v2-image-modal-body').innerHTML=plate.querySelector('svg').outerHTML;modal.hidden=false;document.body.style.overflow='hidden';modal.querySelector('.v2-image-modal-close').focus()};plate.querySelector('.v2-open-image').addEventListener('click',open);plate.querySelector('svg').addEventListener('click',open)});
++  root.querySelectorAll('.v2-plate').forEach(plate=>{
++    const open=()=>{modal.querySelector('.v2-image-modal-title').textContent=plate.querySelector('h4').textContent;modal.querySelector('.v2-image-modal-body').innerHTML=plate.querySelector('svg').outerHTML;modal.hidden=false;document.body.style.overflow='hidden';modal.querySelector('.v2-image-modal-close').focus()};
++    plate.querySelector('.v2-open-image').addEventListener('click',open);
++    plate.querySelector('svg').addEventListener('click',e=>{const c=e.target.closest&&e.target.closest('.v2-callout');if(c){e.stopPropagation();activateV2Callout(c);return}open()});
++    plate.querySelector('svg').addEventListener('keydown',e=>{const c=e.target.closest&&e.target.closest('.v2-callout');if(c&&(e.key==='Enter'||e.key===' ')){e.preventDefault();activateV2Callout(c)}});
++    plate.querySelector('.v2-organ-buttons').addEventListener('click',e=>{const b=e.target.closest('.v2-organ-button');if(!b)return;flashV2Organ(plate.querySelector('svg'),b.dataset.v2X,b.dataset.v2Y,b.dataset.v2Name)});
++  });
++  modal.querySelector('.v2-image-modal-body').addEventListener('click',e=>{const c=e.target.closest&&e.target.closest('.v2-callout');if(c){e.stopPropagation();activateV2Callout(c)}});
++  modal.querySelector('.v2-image-modal-body').addEventListener('keydown',e=>{const c=e.target.closest&&e.target.closest('.v2-callout');if(c&&(e.key==='Enter'||e.key===' ')){e.preventDefault();activateV2Callout(c)}});
+   modal.querySelector('.v2-image-modal-close').addEventListener('click',closeLarge);modal.addEventListener('click',e=>{if(e.target===modal)closeLarge()});document.addEventListener('keydown',e=>{if(e.key==='Escape'&&!modal.hidden)closeLarge()});
+ })();
+ </script>
