@@ -1,0 +1,173 @@
+name: Cockroach Android v2.1.0 Production CI
+
+on:
+  push:
+    branches:
+      - cockroach-android-v2.1.0
+    paths:
+      - 'cockroach-android-v2-src/**'
+      - '.github/workflows/cockroach-android-v2.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 50
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Reconstruct audited Android Studio project
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(find cockroach-android-v2-src -maxdepth 1 -type f -name 'part*.b64' | wc -l)" -eq 13
+          cat $(find cockroach-android-v2-src -maxdepth 1 -type f -name 'part*.b64' | sort) > /tmp/project.tar.xz.b64
+          test "$(wc -c < /tmp/project.tar.xz.b64)" -eq 99228
+          base64 --decode /tmp/project.tar.xz.b64 > /tmp/project.tar.xz
+          test "$(wc -c < /tmp/project.tar.xz)" -eq 74420
+          echo "2e0987f56a00a6cf550dcf59c350bf8144a0186dd57a684b24c5defb6773cf54  /tmp/project.tar.xz" | sha256sum --check -
+          mkdir -p /tmp/cockroach-build
+          tar -xJf /tmp/project.tar.xz -C /tmp/cockroach-build
+          test -f /tmp/cockroach-build/CockroachVirtualDissectionAndroid/app/src/main/assets/www/index.html
+          echo "PROJECT_DIR=/tmp/cockroach-build/CockroachVirtualDissectionAndroid" >> "$GITHUB_ENV"
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install Android SDK 36
+        shell: bash
+        run: |
+          set -euo pipefail
+          yes | sdkmanager --licenses >/dev/null || true
+          sdkmanager 'platforms;android-36' 'build-tools;36.0.0' 'platform-tools' 'emulator'
+
+      - name: Set up Gradle 9.5.0
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '9.5.0'
+
+      - name: Static scientific and HTML audit
+        shell: bash
+        run: |
+          cd "$PROJECT_DIR"
+          python3 tools/verify_lab.py
+
+      - name: JavaScript syntax audit
+        shell: bash
+        run: |
+          cd "$PROJECT_DIR"
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          source=Path('app/src/main/assets/www/index.html').read_text(encoding='utf-8')
+          scripts=re.findall(r'<script(?:\s[^>]*)?>(.*?)</script>', source, re.S|re.I)
+          assert scripts, 'No inline JavaScript found'
+          Path('/tmp/cockroach-inline.js').write_text('\n'.join(scripts), encoding='utf-8')
+          print('inline_scripts', len(scripts))
+          PY
+          node --check /tmp/cockroach-inline.js
+
+      - name: Build, lint and package
+        shell: bash
+        run: |
+          cd "$PROJECT_DIR"
+          gradle :app:lintDebug :app:assembleDebug :app:assembleRelease :app:bundleRelease --no-daemon --stacktrace
+
+      - name: Verify APK package and bundled laboratory
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd "$PROJECT_DIR"
+          APK=app/build/outputs/apk/debug/app-debug.apk
+          test -f "$APK"
+          "${ANDROID_HOME}/build-tools/36.0.0/apksigner" verify --verbose --print-certs "$APK"
+          BADGING="$("${ANDROID_HOME}/build-tools/36.0.0/aapt" dump badging "$APK")"
+          printf '%s\n' "$BADGING"
+          grep -Fq "package: name='in.gov.tn.gascngl.zoology.cockroachlab' versionCode='21000' versionName='2.1.0'" <<<"$BADGING"
+          unzip -p "$APK" assets/www/index.html > /tmp/apk-index.html
+          cmp --silent /tmp/apk-index.html app/src/main/assets/www/index.html
+          ! grep -q '<uses-permission android:name="android.permission.INTERNET"' app/src/main/AndroidManifest.xml
+
+      - name: API 36 emulator instrumentation tests
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 36
+          target: google_apis
+          arch: x86_64
+          profile: pixel_6
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim
+          disable-animations: true
+          script: cd "$PROJECT_DIR" && gradle :app:connectedDebugAndroidTest --no-daemon --stacktrace
+
+      - name: Package verified outputs
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd "$PROJECT_DIR"
+          mkdir -p artifacts
+          cp app/build/outputs/apk/debug/app-debug.apk artifacts/Cockroach-Virtual-Dissection-v2.1.0-debug.apk
+          cp app/build/outputs/apk/release/app-release-unsigned.apk artifacts/Cockroach-Virtual-Dissection-v2.1.0-release-unsigned.apk
+          cp app/build/outputs/bundle/release/app-release.aab artifacts/Cockroach-Virtual-Dissection-v2.1.0-release-unsigned.aab
+          sha256sum artifacts/Cockroach-* > artifacts/SHA256SUMS.txt
+          {
+            echo '# GitHub CI Build Report'
+            echo
+            echo '- API: 36'
+            echo '- AGP: 9.3.2'
+            echo '- Gradle: 9.5.0'
+            echo '- JDK: 17'
+            echo '- HTML/static audit: PASS'
+            echo '- JavaScript syntax: PASS'
+            echo '- Android lint: PASS'
+            echo '- Debug APK: PASS'
+            echo '- Unsigned release APK/AAB: PASS'
+            echo '- APK package/version verification: PASS'
+            echo '- Offline asset byte comparison: PASS'
+            echo '- INTERNET permission absent: PASS'
+          } > artifacts/CI_BUILD_REPORT.md
+          {
+            echo '# CI Device Test Report'
+            echo
+            echo '- API 36 Google APIs x86_64 emulator: PASS'
+            echo '- Instrumentation suite: PASS'
+            echo '- Physical-device stress test: not performed by CI'
+          } > artifacts/CI_DEVICE_TEST_REPORT.md
+          cp BUILD_REPORT.md DEVICE_TEST_REPORT.md artifacts/
+          (
+            cd /tmp/cockroach-build
+            zip -qr "$PROJECT_DIR/artifacts/CockroachVirtualDissectionAndroidStudio_v2.1.0.zip" CockroachVirtualDissectionAndroid \
+              -x 'CockroachVirtualDissectionAndroid/app/build/*' \
+                 'CockroachVirtualDissectionAndroid/.gradle/*' \
+                 'CockroachVirtualDissectionAndroid/artifacts/*'
+          )
+          sha256sum artifacts/CockroachVirtualDissectionAndroidStudio_v2.1.0.zip >> artifacts/SHA256SUMS.txt
+
+      - name: Upload verified build outputs
+        uses: actions/upload-artifact@v4
+        with:
+          name: Cockroach-Virtual-Dissection-v2.1.0-build
+          path: /tmp/cockroach-build/CockroachVirtualDissectionAndroid/artifacts/
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Upload test reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: Cockroach-Virtual-Dissection-v2.1.0-test-reports
+          path: |
+            /tmp/cockroach-build/CockroachVirtualDissectionAndroid/app/build/reports/
+            /tmp/cockroach-build/CockroachVirtualDissectionAndroid/app/build/outputs/androidTest-results/
+          if-no-files-found: warn
+          retention-days: 30
