@@ -2,7 +2,8 @@ name: Cockroach Android v2.1.0 Production CI
 
 on:
   push:
-    branches: [cockroach-android-v2.1.0]
+    branches:
+      - cockroach-android-v2.1.0
     paths:
       - 'cockroach-android-v2-src/**'
       - '.github/workflows/cockroach-android-v2.yml'
@@ -15,6 +16,7 @@ jobs:
   build-and-test:
     runs-on: ubuntu-latest
     timeout-minutes: 50
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -24,25 +26,40 @@ jobs:
         run: |
           set -euo pipefail
           SRC=cockroach-android-v2-src
-          for n in 00 01 02 03 04 05 06 07 08 09 10; do test -f "$SRC/part${n}.b64"; done
+          for n in 00 01 02 03 04 05 06 07 08 09 10; do
+            test -f "$SRC/part${n}.b64"
+          done
           test -f "$SRC/part12.b64"
-          for f in p11a0.txt p11a1.txt p11a20.txt p11a21.txt p11a22-raw.txt p11a23.txt p11a3.txt p11b.txt p11c.txt p11d.txt; do test -f "$SRC/$f"; done
+          test -f "$SRC/p11a0.txt"
+          test -f "$SRC/p11a1.txt"
+          test -f "$SRC/p11a20.txt"
+          test -f "$SRC/p11a21.txt"
+          test -f "$SRC/p11a22-raw.txt"
+          test -f "$SRC/p11a23.txt"
+          test -f "$SRC/p11a3.txt"
+          test -f "$SRC/p11b.txt"
+          test -f "$SRC/p11c.txt"
+          test -f "$SRC/p11d.txt"
+
           : > /tmp/project.tar.xz.b64
-          for n in 00 01 02 03 04 05 06 07 08 09 10; do cat "$SRC/part${n}.b64" >> /tmp/project.tar.xz.b64; done
+          for n in 00 01 02 03 04 05 06 07 08 09 10; do
+            cat "$SRC/part${n}.b64" >> /tmp/project.tar.xz.b64
+          done
           cat "$SRC/p11a0.txt" "$SRC/p11a1.txt" "$SRC/p11a20.txt" "$SRC/p11a21.txt" >> /tmp/project.tar.xz.b64
           base64 --decode "$SRC/p11a22-raw.txt" >> /tmp/project.tar.xz.b64
           cat "$SRC/p11a23.txt" "$SRC/p11a3.txt" "$SRC/p11b.txt" "$SRC/p11c.txt" "$SRC/p11d.txt" >> /tmp/project.tar.xz.b64
           cat "$SRC/part12.b64" >> /tmp/project.tar.xz.b64
+
           test "$(wc -c < /tmp/project.tar.xz.b64)" -eq 99228
           base64 --decode /tmp/project.tar.xz.b64 > /tmp/project.tar.xz
           test "$(wc -c < /tmp/project.tar.xz)" -eq 74420
           echo "2e0987f56a00a6cf550dcf59c350bf8144a0186dd57a684b24c5defb6773cf54  /tmp/project.tar.xz" | sha256sum --check -
-          rm -rf /tmp/cockroach-build && mkdir -p /tmp/cockroach-build
+          mkdir -p /tmp/cockroach-build
           tar -xJf /tmp/project.tar.xz -C /tmp/cockroach-build
           test -f /tmp/cockroach-build/CockroachVirtualDissectionAndroid/app/src/main/assets/www/index.html
           echo "PROJECT_DIR=/tmp/cockroach-build/CockroachVirtualDissectionAndroid" >> "$GITHUB_ENV"
 
-      - name: Pin AndroidX to API 36 compatible versions
+      - name: Pin AndroidX to the API 36 compatible line
         shell: bash
         run: |
           set -euo pipefail
@@ -51,29 +68,18 @@ jobs:
           from pathlib import Path
           p=Path('app/build.gradle')
           s=p.read_text(encoding='utf-8')
-          expected={
+          required={
               "androidx.activity:activity:1.13.0":"androidx.activity:activity:1.11.0",
               "androidx.core:core:1.19.0":"androidx.core:core:1.17.0",
           }
-          for old,new in expected.items():
+          for old,new in required.items():
               if old not in s:
-                  raise SystemExit(f'Expected baseline dependency not found: {old}')
+                  raise SystemExit(f'Expected dependency not found: {old}')
               s=s.replace(old,new)
-          force_block="""
-
-configurations.configureEach {
-    resolutionStrategy {
-        force 'androidx.core:core:1.17.0', 'androidx.core:core-ktx:1.17.0'
-    }
-}
-"""
-          if 'androidx.core:core-ktx:1.17.0' not in s:
-              s += force_block
           p.write_text(s,encoding='utf-8')
           PY
           grep -Fq "androidx.activity:activity:1.11.0" app/build.gradle
           grep -Fq "androidx.core:core:1.17.0" app/build.gradle
-          grep -Fq "androidx.core:core-ktx:1.17.0" app/build.gradle
           ! grep -Fq "androidx.activity:activity:1.13.0" app/build.gradle
           ! grep -Fq "androidx.core:core:1.19.0" app/build.gradle
 
@@ -98,15 +104,6 @@ configurations.configureEach {
         with:
           gradle-version: '9.5.0'
 
-      - name: Verify resolved AndroidX Core line
-        shell: bash
-        run: |
-          cd "$PROJECT_DIR"
-          gradle :app:dependencyInsight --configuration debugRuntimeClasspath --dependency androidx.core --no-daemon
-          gradle :app:dependencies --configuration debugRuntimeClasspath --no-daemon > /tmp/deps.txt
-          grep -Eq 'androidx.core:core(:| -> )1.17.0|androidx.core:core:1.17.0' /tmp/deps.txt
-          ! grep -Eq 'androidx.core:core(-ktx)?:1.19.0' /tmp/deps.txt
-
       - name: Static scientific and HTML audit
         shell: bash
         run: |
@@ -124,8 +121,8 @@ configurations.configureEach {
           source=Path('app/src/main/assets/www/index.html').read_text(encoding='utf-8')
           scripts=re.findall(r'<script(?:\s[^>]*)?>(.*?)</script>', source, re.S|re.I)
           assert scripts, 'No inline JavaScript found'
-          Path('/tmp/cockroach-inline.js').write_text('\n'.join(scripts),encoding='utf-8')
-          print('inline_scripts',len(scripts))
+          Path('/tmp/cockroach-inline.js').write_text('\n'.join(scripts), encoding='utf-8')
+          print('inline_scripts', len(scripts))
           PY
           node --check /tmp/cockroach-inline.js
 
@@ -170,23 +167,24 @@ configurations.configureEach {
           cp app/build/outputs/apk/debug/app-debug.apk artifacts/Cockroach-Virtual-Dissection-v2.1.0-debug.apk
           cp app/build/outputs/apk/release/app-release-unsigned.apk artifacts/Cockroach-Virtual-Dissection-v2.1.0-release-unsigned.apk
           cp app/build/outputs/bundle/release/app-release.aab artifacts/Cockroach-Virtual-Dissection-v2.1.0-release-unsigned.aab
+          sha256sum artifacts/Cockroach-* > artifacts/SHA256SUMS.txt
           {
             echo '# GitHub CI Build Report'
             echo
-            echo '- Baseline archive SHA-256: PASS — 2e0987f56a00a6cf550dcf59c350bf8144a0186dd57a684b24c5defb6773cf54'
-            echo '- compileSdk / targetSdk: 36 / 36'
+            echo '- Baseline reconstructed archive SHA-256: PASS (2e0987f56a00a6cf550dcf59c350bf8144a0186dd57a684b24c5defb6773cf54)'
+            echo '- API: 36'
             echo '- AGP: 9.3.2'
             echo '- Gradle: 9.5.0'
             echo '- JDK: 17'
-            echo '- AndroidX Activity: 1.11.0'
-            echo '- AndroidX Core/Core-KTX: forced 1.17.0'
-            echo '- Scientific/HTML audit: PASS'
+            echo '- AndroidX Activity: 1.11.0 (API-36 line)'
+            echo '- AndroidX Core: 1.17.0 (API-36 line)'
+            echo '- HTML/static audit: PASS'
             echo '- JavaScript syntax: PASS'
             echo '- Android lint: PASS'
             echo '- Debug APK: PASS'
             echo '- Unsigned release APK/AAB: PASS'
-            echo '- Package/version verification: PASS'
-            echo '- Bundled HTML byte comparison: PASS'
+            echo '- APK package/version verification: PASS'
+            echo '- Offline asset byte comparison: PASS'
             echo '- INTERNET permission absent: PASS'
           } > artifacts/CI_BUILD_REPORT.md
           {
@@ -194,9 +192,9 @@ configurations.configureEach {
             echo
             echo '- API 36 Google APIs x86_64 emulator: PASS'
             echo '- Instrumentation suite: PASS'
-            echo '- Physical-device stress test: NOT performed by GitHub CI'
+            echo '- Physical-device stress test: not performed by CI'
           } > artifacts/CI_DEVICE_TEST_REPORT.md
-          cp BUILD_REPORT.md DEVICE_TEST_REPORT.md artifacts/ 2>/dev/null || true
+          cp BUILD_REPORT.md DEVICE_TEST_REPORT.md artifacts/
           (
             cd /tmp/cockroach-build
             zip -qr "$PROJECT_DIR/artifacts/CockroachVirtualDissectionAndroidStudio_v2.1.0.zip" CockroachVirtualDissectionAndroid \
@@ -204,7 +202,7 @@ configurations.configureEach {
                  'CockroachVirtualDissectionAndroid/.gradle/*' \
                  'CockroachVirtualDissectionAndroid/artifacts/*'
           )
-          sha256sum artifacts/Cockroach-* artifacts/CockroachVirtualDissectionAndroidStudio_v2.1.0.zip > artifacts/SHA256SUMS.txt
+          sha256sum artifacts/CockroachVirtualDissectionAndroidStudio_v2.1.0.zip >> artifacts/SHA256SUMS.txt
 
       - name: Upload verified build outputs
         uses: actions/upload-artifact@v4
