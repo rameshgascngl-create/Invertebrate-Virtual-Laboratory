@@ -167,6 +167,19 @@ jobs:
           cmp --silent /tmp/apk-index.html app/src/main/assets/www/index.html
           ! grep -q '<uses-permission android:name="android.permission.INTERNET"' app/src/main/AndroidManifest.xml
 
+      - name: Enable KVM hardware acceleration
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ ! -e /dev/kvm ]; then
+            echo "::error::/dev/kvm is not available on this runner"
+            exit 1
+          fi
+          sudo chmod 666 /dev/kvm
+          ls -l /dev/kvm
+          test -r /dev/kvm
+          test -w /dev/kvm
+
       - name: API 36 emulator instrumentation tests
         uses: reactivecircus/android-emulator-runner@v2
         with:
@@ -176,6 +189,7 @@ jobs:
           profile: pixel_6
           emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim
           disable-animations: true
+          disable-linux-hw-accel: false
           script: cd "$PROJECT_DIR" && gradle :app:connectedDebugAndroidTest --no-daemon --stacktrace
 
       - name: Package verified outputs
