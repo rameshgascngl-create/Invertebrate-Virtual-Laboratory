@@ -25,8 +25,31 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          test "$(find cockroach-android-v2-src -maxdepth 1 -type f -name 'part*.b64' | wc -l)" -eq 13
-          cat $(find cockroach-android-v2-src -maxdepth 1 -type f -name 'part*.b64' | sort) > /tmp/project.tar.xz.b64
+          SRC=cockroach-android-v2-src
+          for n in 00 01 02 03 04 05 06 07 08 09 10; do
+            test -f "$SRC/part${n}.b64"
+          done
+          test -f "$SRC/part12.b64"
+          test -f "$SRC/p11a0.txt"
+          test -f "$SRC/p11a1.txt"
+          test -f "$SRC/p11a20.txt"
+          test -f "$SRC/p11a21.txt"
+          test -f "$SRC/p11a22-raw.txt"
+          test -f "$SRC/p11a23.txt"
+          test -f "$SRC/p11a3.txt"
+          test -f "$SRC/p11b.txt"
+          test -f "$SRC/p11c.txt"
+          test -f "$SRC/p11d.txt"
+
+          : > /tmp/project.tar.xz.b64
+          for n in 00 01 02 03 04 05 06 07 08 09 10; do
+            cat "$SRC/part${n}.b64" >> /tmp/project.tar.xz.b64
+          done
+          cat "$SRC/p11a0.txt" "$SRC/p11a1.txt" "$SRC/p11a20.txt" "$SRC/p11a21.txt" >> /tmp/project.tar.xz.b64
+          base64 --decode "$SRC/p11a22-raw.txt" >> /tmp/project.tar.xz.b64
+          cat "$SRC/p11a23.txt" "$SRC/p11a3.txt" "$SRC/p11b.txt" "$SRC/p11c.txt" "$SRC/p11d.txt" >> /tmp/project.tar.xz.b64
+          cat "$SRC/part12.b64" >> /tmp/project.tar.xz.b64
+
           test "$(wc -c < /tmp/project.tar.xz.b64)" -eq 99228
           base64 --decode /tmp/project.tar.xz.b64 > /tmp/project.tar.xz
           test "$(wc -c < /tmp/project.tar.xz)" -eq 74420
@@ -61,6 +84,7 @@ jobs:
         shell: bash
         run: |
           cd "$PROJECT_DIR"
+          grep -Fq "id 'com.android.application' version '9.3.2'" build.gradle
           python3 tools/verify_lab.py
 
       - name: JavaScript syntax audit
@@ -123,6 +147,7 @@ jobs:
           {
             echo '# GitHub CI Build Report'
             echo
+            echo '- Reconstructed archive SHA-256: PASS'
             echo '- API: 36'
             echo '- AGP: 9.3.2'
             echo '- Gradle: 9.5.0'
