@@ -83,6 +83,26 @@ jobs:
           ! grep -Fq "androidx.activity:activity:1.13.0" app/build.gradle
           ! grep -Fq "androidx.core:core:1.19.0" app/build.gradle
 
+      - name: Qualify API 27 navigation bar style
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd "$PROJECT_DIR"
+          python3 - <<'PY'
+          from pathlib import Path
+          base=Path('app/src/main/res/values/styles.xml')
+          original=base.read_text(encoding='utf-8')
+          item='        <item name="android:windowLightNavigationBar">false</item>\n'
+          if original.count(item) != 1:
+              raise SystemExit('Expected exactly one windowLightNavigationBar item in base styles')
+          base.write_text(original.replace(item,''),encoding='utf-8')
+          v27=Path('app/src/main/res/values-v27/styles.xml')
+          v27.parent.mkdir(parents=True,exist_ok=True)
+          v27.write_text(original,encoding='utf-8')
+          PY
+          ! grep -Fq 'android:windowLightNavigationBar' app/src/main/res/values/styles.xml
+          grep -Fq 'android:windowLightNavigationBar' app/src/main/res/values-v27/styles.xml
+
       - name: Set up JDK 17
         uses: actions/setup-java@v4
         with:
@@ -178,6 +198,7 @@ jobs:
             echo '- JDK: 17'
             echo '- AndroidX Activity: 1.11.0 (API-36 line)'
             echo '- AndroidX Core: 1.17.0 (API-36 line)'
+            echo '- API-27 navigation style qualification: PASS'
             echo '- HTML/static audit: PASS'
             echo '- JavaScript syntax: PASS'
             echo '- Android lint: PASS'
