@@ -44,6 +44,17 @@ jobs:
           ! grep -q 'போலிசீலோம்' app/src/main/assets/www/index.html
           ! grep -q 'குறுஇழைக்கள்' app/src/main/assets/www/index.html
 
+      - name: Verify Tamil patch is idempotent
+        shell: bash
+        run: |
+          set -euo pipefail
+          cp app/src/main/assets/www/index.html /tmp/index.once.html
+          python3 tools/tn_tamil_patch.py app/src/main/assets/www/index.html
+          cmp --silent /tmp/index.once.html app/src/main/assets/www/index.html
+          test "$(grep -Fc 'TN Tamil terminology revision: v1.0.2' app/src/main/assets/www/index.html)" -eq 1
+          test "$(grep -Fo 'துளையுடலிகள் (Porifera)' app/src/main/assets/www/index.html | wc -l)" -ge 1
+          ! grep -q 'துளையுடலிகள் (துளையுடலிகள்' app/src/main/assets/www/index.html
+
       - name: Set up JDK 21
         uses: actions/setup-java@v4
         with:
@@ -78,7 +89,11 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          "${ANDROID_HOME}/build-tools/36.0.0/aapt" dump badging app/build/outputs/apk/debug/app-debug.apk
+          BADGING="$("${ANDROID_HOME}/build-tools/36.0.0/aapt" dump badging app/build/outputs/apk/debug/app-debug.apk)"
+          printf '%s\n' "$BADGING"
+          grep -Fq "package: name='com.gasczoology.invertebratelab' versionCode='102' versionName='1.0.2'" <<<"$BADGING"
+          unzip -p app/build/outputs/apk/debug/app-debug.apk assets/www/index.html > /tmp/apk-index.html
+          echo "fb1b149089f401f1fa99bd759683fe4f52b2959ad9936a3cb8b383585b288609  /tmp/apk-index.html" | sha256sum --check -
 
       - name: Record APK checksum
         run: sha256sum app/build/outputs/apk/debug/app-debug.apk
@@ -86,7 +101,7 @@ jobs:
       - name: Upload verified APK artifact
         uses: actions/upload-artifact@v4
         with:
-          name: Invertebrate-Virtual-Laboratory-APK
+          name: Invertebrate-Virtual-Laboratory-v1.0.2-debug-APK
           path: app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
           retention-days: 30

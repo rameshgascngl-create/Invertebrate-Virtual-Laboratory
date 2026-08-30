@@ -6,8 +6,15 @@ s=p.read_text(encoding='utf-8')
 
 # Add revision marker once.
 marker='<!-- TN Tamil terminology revision: v1.0.2 | Tamil Nadu school-biology aligned terminology -->\n'
-if marker not in s:
-    s=s.replace('<head>\n','<head>\n'+marker,1)
+if marker in s:
+    # The workflow and local builds may invoke this tool more than once.  Once
+    # the audited revision is present, preserve the verified document byte for
+    # byte instead of nesting Tamil-first labels a second time.
+    sys.exit(0)
+
+if '<head>\n' not in s:
+    raise SystemExit('Expected <head> marker not found; refusing partial patch')
+s=s.replace('<head>\n','<head>\n'+marker,1)
 
 # School-textbook-aligned terminology. Longer inflected forms first.
 repls=[
