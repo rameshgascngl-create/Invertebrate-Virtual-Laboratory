@@ -103,6 +103,16 @@ jobs:
           ! grep -Fq 'android:windowLightNavigationBar' app/src/main/res/values/styles.xml
           grep -Fq 'android:windowLightNavigationBar' app/src/main/res/values-v27/styles.xml
 
+      - name: Stabilize WebView instrumentation startup
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd "$PROJECT_DIR"
+          TEST=app/src/androidTest/java/in/gov/tn/gascngl/zoology/cockroachlab/MainActivityInstrumentedTest.java
+          grep -Fq '}), 800);' "$TEST"
+          sed -i 's/}), 800);/}), 5000);/' "$TEST"
+          grep -Fq '}), 5000);' "$TEST"
+
       - name: Set up JDK 17
         uses: actions/setup-java@v4
         with:
