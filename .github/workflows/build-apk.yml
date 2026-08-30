@@ -18,7 +18,7 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Validate and reconstruct offline laboratory HTML
+      - name: Reconstruct baseline offline laboratory HTML
         shell: bash
         run: |
           set -euo pipefail
@@ -30,6 +30,19 @@ jobs:
           xz --decompress --stdout /tmp/index.html.xz > app/src/main/assets/www/index.html
           echo "07b52a03707f9f0114a0d047bec8f295d70226b0c944cd44a359858e358aff97  app/src/main/assets/www/index.html" | sha256sum --check -
           test "$(wc -c < app/src/main/assets/www/index.html)" -eq 1034941
+
+      - name: Apply audited Tamil Nadu terminology revision
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 tools/tn_tamil_patch.py app/src/main/assets/www/index.html
+          echo "fb1b149089f401f1fa99bd759683fe4f52b2959ad9936a3cb8b383585b288609  app/src/main/assets/www/index.html" | sha256sum --check -
+          test "$(wc -c < app/src/main/assets/www/index.html)" -eq 1036211
+          ! grep -q 'சிலியா' app/src/main/assets/www/index.html
+          ! grep -q 'கொடிமயிர்' app/src/main/assets/www/index.html
+          ! grep -q 'புரவலர்' app/src/main/assets/www/index.html
+          ! grep -q 'போலிசீலோம்' app/src/main/assets/www/index.html
+          ! grep -q 'குறுஇழைக்கள்' app/src/main/assets/www/index.html
 
       - name: Set up JDK 21
         uses: actions/setup-java@v4
