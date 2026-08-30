@@ -16,7 +16,6 @@ jobs:
   build-and-test:
     runs-on: ubuntu-latest
     timeout-minutes: 55
-
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -41,10 +40,9 @@ jobs:
           echo "2e0987f56a00a6cf550dcf59c350bf8144a0186dd57a684b24c5defb6773cf54  /tmp/project.tar.xz" | sha256sum --check -
           mkdir -p /tmp/cockroach-build
           tar -xJf /tmp/project.tar.xz -C /tmp/cockroach-build
-          test -f /tmp/cockroach-build/CockroachVirtualDissectionAndroid/app/src/main/assets/www/index.html
           echo "PROJECT_DIR=/tmp/cockroach-build/CockroachVirtualDissectionAndroid" >> "$GITHUB_ENV"
 
-      - name: Apply API 36 compatibility fixes
+      - name: Apply Android compatibility and v2.1.1 correction
         shell: bash
         run: |
           set -euo pipefail
@@ -52,83 +50,49 @@ jobs:
           python3 - <<'PY'
           from pathlib import Path
           p=Path('app/build.gradle'); s=p.read_text(encoding='utf-8')
-          for old,new in {
-              'androidx.activity:activity:1.13.0':'androidx.activity:activity:1.11.0',
-              'androidx.core:core:1.19.0':'androidx.core:core:1.17.0',
-          }.items():
+          for old,new in {'androidx.activity:activity:1.13.0':'androidx.activity:activity:1.11.0','androidx.core:core:1.19.0':'androidx.core:core:1.17.0'}.items():
               if old not in s: raise SystemExit(f'Expected dependency missing: {old}')
               s=s.replace(old,new)
           p.write_text(s,encoding='utf-8')
           base=Path('app/src/main/res/values/styles.xml'); original=base.read_text(encoding='utf-8')
           item='        <item name="android:windowLightNavigationBar">false</item>\n'
-          if original.count(item)!=1: raise SystemExit('Expected navigation style item missing')
+          if original.count(item)!=1: raise SystemExit('Expected API-27 style item missing')
           base.write_text(original.replace(item,''),encoding='utf-8')
           v27=Path('app/src/main/res/values-v27/styles.xml'); v27.parent.mkdir(parents=True,exist_ok=True); v27.write_text(original,encoding='utf-8')
           test=Path('app/src/androidTest/java/in/gov/tn/gascngl/zoology/cockroachlab/MainActivityInstrumentedTest.java')
           ts=test.read_text(encoding='utf-8')
-          if '}), 800);' not in ts: raise SystemExit('Expected WebView startup delay missing')
+          if '}), 800);' not in ts: raise SystemExit('Expected startup delay missing')
           test.write_text(ts.replace('}), 800);','}), 5000);',1),encoding='utf-8')
           PY
-
-      - name: Apply corrected v2.1.1 organ-blink release
-        shell: bash
-        run: |
-          set -euo pipefail
           PATCH="$GITHUB_WORKSPACE/cockroach-android-v2-src/v2.1.1-organ-blink.patch"
           echo "17cb55413e412be6974144e15307b40fc9317a4b3ad008f28cfe9280dae8e138  $PATCH" | sha256sum --check -
-          cd "$PROJECT_DIR"
           patch -p1 < "$PATCH"
           echo "08143a01bfe6e98c671d0cf4e4a4b63ea98c188c5f2355155361b51fb3b4a90c  app/src/main/assets/www/index.html" | sha256sum --check -
           python3 - <<'PY'
           from pathlib import Path
-          # Android version bump.
           p=Path('app/build.gradle'); s=p.read_text(encoding='utf-8')
-          if 'versionCode 21000' not in s or "versionName '2.1.0'" not in s: raise SystemExit('Expected v2.1.0 Android version missing')
-          s=s.replace('versionCode 21000','versionCode 21100',1).replace("versionName '2.1.0'","versionName '2.1.1'",1)
-          p.write_text(s,encoding='utf-8')
-
-          # Strengthen static scientific/Android verification for the restored teaching interaction.
+          if 'versionCode 21000' not in s or "versionName '2.1.0'" not in s: raise SystemExit('Expected v2.1.0 version missing')
+          p.write_text(s.replace('versionCode 21000','versionCode 21100',1).replace("versionName '2.1.0'","versionName '2.1.1'",1),encoding='utf-8')
           p=Path('tools/verify_lab.py'); s=p.read_text(encoding='utf-8')
           s=s.replace("assert 'Practical-first bilingual teaching release v2.1.0' in s","assert 'Practical-first bilingual teaching release v2.1.1' in s")
           anchor="assert 'teaching reconstructions, not specimen photographs' in s\n"
-          extra=(anchor+
-                 "assert 'v2-organ-button' in s\n"
-                 "assert 'v2-organ-blink' in s\n"
-                 "assert 'v2-organ-halo' in s\n"
-                 "assert 'flashV2Organ' in s\n"
-                 "assert 'Tap an organ name to blink its position' in s\n"
-                 "assert 'data-android-ready=\\\"true\\\"' in s\n"
-                 "assert 'AndroidBridge.saveProgressBackup' in s\n"
-                 "assert 'AndroidBridge.speakSegments' in s\n"
-                 "assert 'AndroidBridge.stopSpeech' in s\n")
-          if "assert 'v2-organ-button' in s" not in s:
-              if anchor not in s: raise SystemExit('Verifier insertion point missing')
-              s=s.replace(anchor,extra,1)
+          checks=("assert 'v2-organ-button' in s\nassert 'v2-organ-blink' in s\nassert 'v2-organ-halo' in s\nassert 'flashV2Organ' in s\n"
+                  "assert 'Tap an organ name to blink its position' in s\nassert 'data-android-ready=\\\"true\\\"' in s\n"
+                  "assert 'AndroidBridge.saveProgressBackup' in s\nassert 'AndroidBridge.speakSegments' in s\nassert 'AndroidBridge.stopSpeech' in s\n")
+          if "assert 'v2-organ-button' in s" not in s: s=s.replace(anchor,anchor+checks,1)
           p.write_text(s,encoding='utf-8')
-
-          # Add an emulator assertion for organ-name -> anatomy blink/halo.
-          p=Path('app/src/androidTest/java/in/gov/tn/gascngl/zoology/cockroachlab/MainActivityInstrumentedTest.java')
-          s=p.read_text(encoding='utf-8')
+          p=Path('app/src/androidTest/java/in/gov/tn/gascngl/zoology/cockroachlab/MainActivityInstrumentedTest.java'); s=p.read_text(encoding='utf-8')
           marker='    @Test\n    public void webStorageSurvivesActivityRecreation() throws Exception {'
-          test='''    @Test
-    public void enhancedPlateOrganNameBlinksSelectedAnatomy() throws Exception {
-        try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
-            String js = "(function(){" +
-                    "var r=document.getElementById('cockroach-lab-v1');if(!r)return false;" +
-                    "var plate=r.querySelector('.v2-plate');if(!plate)return false;" +
-                    "var b=plate.querySelector('.v2-organ-button');if(!b)return false;" +
-                    "b.click();var svg=plate.querySelector('svg');" +
-                    "return !!svg.querySelector('.v2-organ-blink')&&!!svg.querySelector('.v2-organ-halo')&&" +
-                    "plate.querySelector('.v2-organ-help').textContent.indexOf('highlighted')>=0;" +
-                    "})()";
-            assertEquals("true", evaluate(scenario, js));
-        }
-    }
-
-'''
+          method=("    @Test\n"
+                  "    public void enhancedPlateOrganNameBlinksSelectedAnatomy() throws Exception {\n"
+                  "        try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {\n"
+                  "            String js = \"(function(){var r=document.getElementById('cockroach-lab-v1');if(!r)return false;var plate=r.querySelector('.v2-plate');if(!plate)return false;var b=plate.querySelector('.v2-organ-button');if(!b)return false;b.click();var svg=plate.querySelector('svg');return !!svg.querySelector('.v2-organ-blink')&&!!svg.querySelector('.v2-organ-halo')&&plate.querySelector('.v2-organ-help').textContent.indexOf('highlighted')>=0;})()\";\n"
+                  "            assertEquals(\"true\", evaluate(scenario, js));\n"
+                  "        }\n"
+                  "    }\n\n")
           if 'enhancedPlateOrganNameBlinksSelectedAnatomy' not in s:
               if marker not in s: raise SystemExit('Instrumentation insertion point missing')
-              s=s.replace(marker,test+marker,1)
+              s=s.replace(marker,method+marker,1)
           p.write_text(s,encoding='utf-8')
           PY
           grep -Fq 'versionCode 21100' app/build.gradle
@@ -159,7 +123,6 @@ jobs:
       - name: Static scientific HTML and Android bridge audit
         shell: bash
         run: |
-          set -euo pipefail
           cd "$PROJECT_DIR"
           grep -Fq "id 'com.android.application' version '9.3.2'" build.gradle
           python3 tools/verify_lab.py
@@ -167,7 +130,6 @@ jobs:
       - name: JavaScript syntax audit
         shell: bash
         run: |
-          set -euo pipefail
           cd "$PROJECT_DIR"
           python3 - <<'PY'
           from pathlib import Path
@@ -176,7 +138,6 @@ jobs:
           scripts=re.findall(r'<script(?:\s[^>]*)?>(.*?)</script>',s,re.S|re.I)
           assert scripts
           Path('/tmp/cockroach-inline.js').write_text('\n'.join(scripts),encoding='utf-8')
-          print('inline_scripts',len(scripts))
           PY
           node --check /tmp/cockroach-inline.js
 
@@ -192,10 +153,8 @@ jobs:
           set -euo pipefail
           cd "$PROJECT_DIR"
           APK=app/build/outputs/apk/debug/app-debug.apk
-          test -f "$APK"
           "${ANDROID_HOME}/build-tools/36.0.0/apksigner" verify --verbose --print-certs "$APK"
           BADGING="$("${ANDROID_HOME}/build-tools/36.0.0/aapt" dump badging "$APK")"
-          printf '%s\n' "$BADGING"
           grep -Fq "package: name='in.gov.tn.gascngl.zoology.cockroachlab' versionCode='21100' versionName='2.1.1'" <<<"$BADGING"
           unzip -p "$APK" assets/www/index.html > /tmp/apk-index.html
           cmp --silent /tmp/apk-index.html app/src/main/assets/www/index.html
@@ -234,44 +193,27 @@ jobs:
           cp app/build/outputs/apk/debug/app-debug.apk artifacts/Cockroach-Virtual-Dissection-v2.1.1-debug.apk
           cp app/build/outputs/apk/release/app-release-unsigned.apk artifacts/Cockroach-Virtual-Dissection-v2.1.1-release-unsigned.apk
           cp app/build/outputs/bundle/release/app-release.aab artifacts/Cockroach-Virtual-Dissection-v2.1.1-release-unsigned.aab
-          cat > artifacts/CI_BUILD_REPORT.md <<'EOF'
-# Cockroach Virtual Dissection Laboratory v2.1.1 — CI Build Report
-
-- Audited v2.1.0 baseline archive SHA-256: PASS — `2e0987f56a00a6cf550dcf59c350bf8144a0186dd57a684b24c5defb6773cf54`
-- v2.1.1 organ-blink patch SHA-256: PASS — `17cb55413e412be6974144e15307b40fc9317a4b3ad008f28cfe9280dae8e138`
-- Final Android-ready HTML SHA-256: PASS — `08143a01bfe6e98c671d0cf4e4a4b63ea98c188c5f2355155361b51fb3b4a90c`
-- Package: `in.gov.tn.gascngl.zoology.cockroachlab`
-- versionName: `2.1.1`
-- versionCode: `21100`
-- compileSdk / targetSdk: 36
-- AGP: 9.3.2
-- Gradle: 9.5.0
-- JDK: 17
-- Android lint: PASS
-- Scientific/HTML audit: PASS
-- JavaScript syntax: PASS
-- Native Android TTS and progress-export bridge retained: PASS
-- Organ-name -> anatomical blink/highlight implementation: PASS
-- Debug APK / unsigned release APK / unsigned AAB: PASS
-- INTERNET permission absent: PASS
-EOF
-          cat > artifacts/CI_DEVICE_TEST_REPORT.md <<'EOF'
-# Cockroach Virtual Dissection Laboratory v2.1.1 — CI Device Test Report
-
-- API 36 Google APIs x86_64 emulator: PASS
-- Offline application startup/core controls: PASS
-- Language/sex/system/handbook interaction: PASS
-- Enlarged anatomy Android Back handling: PASS
-- Web Storage persistence across Activity recreation: PASS
-- Enhanced organ-name -> anatomy blink/halo instrumentation: PASS
-- Physical-phone TTS/document-picker/stress testing: still recommended before public release
-EOF
+          {
+            echo '# Cockroach Virtual Dissection Laboratory v2.1.1 — CI Build Report'
+            echo '- Baseline SHA-256: PASS — 2e0987f56a00a6cf550dcf59c350bf8144a0186dd57a684b24c5defb6773cf54'
+            echo '- v2.1.1 patch SHA-256: PASS — 17cb55413e412be6974144e15307b40fc9317a4b3ad008f28cfe9280dae8e138'
+            echo '- Final HTML SHA-256: PASS — 08143a01bfe6e98c671d0cf4e4a4b63ea98c188c5f2355155361b51fb3b4a90c'
+            echo '- Package/version: in.gov.tn.gascngl.zoology.cockroachlab 2.1.1 (21100)'
+            echo '- AGP 9.3.2 / Gradle 9.5.0 / JDK 17 / API 36: PASS'
+            echo '- Lint, scientific/HTML, JavaScript, native bridge and organ-blink checks: PASS'
+            echo '- Debug APK, unsigned release APK and unsigned AAB: PASS'
+          } > artifacts/CI_BUILD_REPORT.md
+          {
+            echo '# Cockroach Virtual Dissection Laboratory v2.1.1 — CI Device Test Report'
+            echo '- API 36 Google APIs x86_64 emulator: PASS'
+            echo '- Instrumentation suite: PASS'
+            echo '- Organ-name -> anatomy blink/halo test: PASS'
+            echo '- Physical-phone TTS/document-picker/stress testing remains recommended before public release.'
+          } > artifacts/CI_DEVICE_TEST_REPORT.md
           (
             cd /tmp/cockroach-build
             zip -qr "$PROJECT_DIR/artifacts/CockroachVirtualDissectionAndroidStudio_v2.1.1.zip" CockroachVirtualDissectionAndroid \
-              -x 'CockroachVirtualDissectionAndroid/app/build/*' \
-                 'CockroachVirtualDissectionAndroid/.gradle/*' \
-                 'CockroachVirtualDissectionAndroid/artifacts/*'
+              -x 'CockroachVirtualDissectionAndroid/app/build/*' 'CockroachVirtualDissectionAndroid/.gradle/*' 'CockroachVirtualDissectionAndroid/artifacts/*'
           )
           sha256sum artifacts/Cockroach-Virtual-Dissection-v2.1.1-* artifacts/CockroachVirtualDissectionAndroidStudio_v2.1.1.zip > artifacts/SHA256SUMS.txt
 
