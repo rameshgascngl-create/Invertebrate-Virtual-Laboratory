@@ -86,7 +86,7 @@ jobs:
           method=("    @Test\n"
                   "    public void enhancedPlateOrganNameBlinksSelectedAnatomy() throws Exception {\n"
                   "        try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {\n"
-                  "            String js = \"(function(){var r=document.getElementById('cockroach-lab-v1');if(!r)return false;var plate=r.querySelector('.v2-plate');if(!plate)return false;var b=plate.querySelector('.v2-organ-button');if(!b)return false;b.click();var svg=plate.querySelector('svg');return !!svg.querySelector('.v2-organ-blink')&&!!svg.querySelector('.v2-organ-halo')&&plate.querySelector('.v2-organ-help').textContent.indexOf('highlighted')>=0;})()\";\n"
+                  "            String js = \"(function(){var r=document.getElementById('cockroach-lab-v1');if(!r)return false;var h=r.querySelector('#v2Handbook'),hb=r.querySelector('#v2HandbookBtn');if(!h||!hb)return false;if(h.hidden)hb.click();if(h.hidden)return false;var plate=r.querySelector('.v2-plate');if(!plate)return false;var b=plate.querySelector('.v2-organ-button');if(!b)return false;b.click();var svg=plate.querySelector('svg');return !!svg.querySelector('.v2-organ-blink')&&!!svg.querySelector('.v2-organ-halo')&&plate.querySelector('.v2-organ-help').textContent.indexOf('highlighted')>=0;})()\";\n"
                   "            assertEquals(\"true\", evaluate(scenario, js));\n"
                   "        }\n"
                   "    }\n\n")
