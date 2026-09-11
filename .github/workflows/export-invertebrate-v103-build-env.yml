@@ -27,8 +27,8 @@ jobs:
       - name: Set up Android SDK
         uses: android-actions/setup-android@v4
 
-      - name: Install Android 36 SDK
-        run: sdkmanager 'platforms;android-36' 'build-tools;36.0.0' 'platform-tools'
+      - name: Install Android SDK and Build Tools
+        run: sdkmanager 'platforms;android-36' 'build-tools;34.0.0' 'build-tools;36.0.0' 'platform-tools'
 
       - name: Download Gradle 8.9
         run: |
@@ -102,9 +102,10 @@ jobs:
           set -euo pipefail
           mkdir -p /tmp/v103-android-sdk/platforms /tmp/v103-android-sdk/build-tools
           cp -a "$ANDROID_SDK_ROOT/platforms/android-36" /tmp/v103-android-sdk/platforms/
+          cp -a "$ANDROID_SDK_ROOT/build-tools/34.0.0" /tmp/v103-android-sdk/build-tools/
           cp -a "$ANDROID_SDK_ROOT/build-tools/36.0.0" /tmp/v103-android-sdk/build-tools/
           cp -a "$ANDROID_SDK_ROOT/platform-tools" /tmp/v103-android-sdk/
-          printf 'compileSdk=36\nbuildTools=36.0.0\n' > /tmp/v103-android-sdk/BUILD_ENV.txt
+          printf 'compileSdk=36\nbuildTools=34.0.0,36.0.0\n' > /tmp/v103-android-sdk/BUILD_ENV.txt
 
       - name: Upload Gradle environment
         uses: actions/upload-artifact@v7
