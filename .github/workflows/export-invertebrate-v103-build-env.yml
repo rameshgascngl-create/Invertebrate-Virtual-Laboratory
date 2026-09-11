@@ -41,8 +41,7 @@ jobs:
         run: |
           set -euo pipefail
           P=/tmp/invertebrate-primer
-          mkdir -p "$P/app/src/main/java/com/gasczoology/invertebratelab"
-          mkdir -p "$P/app/src/main/res/values"
+          mkdir -p "$P/app/src/main/java/com/gasczoology/invertebratelab" "$P/app/src/main/res/values"
           cat > "$P/settings.gradle.kts" <<'EOF'
           pluginManagement { repositories { google(); mavenCentral(); gradlePluginPortal() } }
           dependencyResolutionManagement { repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS); repositories { google(); mavenCentral() } }
@@ -89,24 +88,36 @@ jobs:
           cd "$P"
           /tmp/gradle-8.9/bin/gradle --no-daemon :app:assembleDebug --stacktrace
 
-      - name: Stage offline build environment
+      - name: Stage Gradle environment
         run: |
           set -euo pipefail
-          mkdir -p /tmp/v103-build-env/gradle-home /tmp/v103-build-env/android-sdk
-          cp -a /tmp/gradle-8.9 /tmp/v103-build-env/
-          cp -a "$HOME/.gradle/caches" /tmp/v103-build-env/gradle-home/
-          [ ! -d "$HOME/.gradle/native" ] || cp -a "$HOME/.gradle/native" /tmp/v103-build-env/gradle-home/
-          cp -a "$ANDROID_SDK_ROOT/platforms/android-36" /tmp/v103-build-env/android-sdk/
-          mkdir -p /tmp/v103-build-env/android-sdk/build-tools
-          cp -a "$ANDROID_SDK_ROOT/build-tools/36.0.0" /tmp/v103-build-env/android-sdk/build-tools/
-          cp -a "$ANDROID_SDK_ROOT/platform-tools" /tmp/v103-build-env/android-sdk/
-          printf 'AGP=8.7.3\nKotlin=2.0.21\nGradle=8.9\ncompileSdk=36\nwebkit=1.12.1\nactivity-ktx=1.9.3\n' > /tmp/v103-build-env/BUILD_ENV.txt
-          find /tmp/v103-build-env -type f -print0 | sort -z | xargs -0 sha256sum > /tmp/v103-build-env/SHA256SUMS.txt
+          mkdir -p /tmp/v103-gradle-env/gradle-home
+          cp -a /tmp/gradle-8.9 /tmp/v103-gradle-env/
+          cp -a "$HOME/.gradle/caches" /tmp/v103-gradle-env/gradle-home/
+          [ ! -d "$HOME/.gradle/native" ] || cp -a "$HOME/.gradle/native" /tmp/v103-gradle-env/gradle-home/
+          printf 'AGP=8.7.3\nKotlin=2.0.21\nGradle=8.9\nwebkit=1.12.1\nactivity-ktx=1.9.3\n' > /tmp/v103-gradle-env/BUILD_ENV.txt
 
-      - name: Upload build environment
+      - name: Stage Android SDK
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/v103-android-sdk/platforms /tmp/v103-android-sdk/build-tools
+          cp -a "$ANDROID_SDK_ROOT/platforms/android-36" /tmp/v103-android-sdk/platforms/
+          cp -a "$ANDROID_SDK_ROOT/build-tools/36.0.0" /tmp/v103-android-sdk/build-tools/
+          cp -a "$ANDROID_SDK_ROOT/platform-tools" /tmp/v103-android-sdk/
+          printf 'compileSdk=36\nbuildTools=36.0.0\n' > /tmp/v103-android-sdk/BUILD_ENV.txt
+
+      - name: Upload Gradle environment
         uses: actions/upload-artifact@v7
         with:
-          name: InvertebrateLab-v1.0.3-offline-build-env
-          path: /tmp/v103-build-env
+          name: InvertebrateLab-v1.0.3-gradle-env
+          path: /tmp/v103-gradle-env
+          compression-level: 6
+          if-no-files-found: error
+
+      - name: Upload Android SDK
+        uses: actions/upload-artifact@v7
+        with:
+          name: InvertebrateLab-v1.0.3-android-sdk
+          path: /tmp/v103-android-sdk
           compression-level: 6
           if-no-files-found: error
