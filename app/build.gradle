@@ -7,11 +7,11 @@ android {
     compileSdk 36
 
     defaultConfig {
-        applicationId 'com.gasczoology.invertlabfresh183'
+        applicationId 'com.gasczoology.invertebratafull184'
         minSdk 24
         targetSdk 36
-        versionCode 18383
-        versionName '1.8.3-freshdiag'
+        versionCode 184
+        versionName '1.8.4'
     }
 
     buildTypes {
