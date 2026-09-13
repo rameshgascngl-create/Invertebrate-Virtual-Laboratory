@@ -1,0 +1,121 @@
+name: Build v1.8.3 Fresh Diagnostic APK
+
+on:
+  push:
+    branches:
+      - invertebrata-v1.8.3-fresh-diagnostic
+    paths:
+      - '.github/workflows/build-v183-fresh-diagnostic.yml'
+      - 'app/**'
+      - 'build.gradle'
+      - 'settings.gradle'
+      - 'gradle.properties'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout diagnostic branch
+        uses: actions/checkout@v4
+
+      - name: Create diagnostic offline payload
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p app/src/main/assets/www
+          cat > app/src/main/assets/www/index.html <<'EOF'
+          <!doctype html>
+          <html lang="en">
+          <head>
+            <meta charset="utf-8">
+            <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+            <title>INVERTEBRATA Fresh Diagnostic</title>
+            <style>
+              html,body{margin:0;min-height:100%;font-family:system-ui,sans-serif;background:#f7f3e8;color:#17211f}
+              main{max-width:720px;margin:auto;padding:32px 22px}
+              h1{color:#0b5d4d;font-size:28px}.ok{padding:16px;border:2px solid #0b5d4d;border-radius:14px;background:#fff}
+              code{overflow-wrap:anywhere}
+            </style>
+          </head>
+          <body><main><h1>INVERTEBRATA FRESH DIAG</h1><div class="ok">
+          <p><strong>Fresh Gradle build installed successfully.</strong></p>
+          <p>This diagnostic APK was compiled from Android source, not repackaged from another APK.</p>
+          <p>Package: <code>com.gasczoology.invertlabfresh183</code></p>
+          <p>Version: 1.8.3-freshdiag / 18383</p>
+          </div></main></body></html>
+          EOF
+          sha256sum app/src/main/assets/www/index.html
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install Android API 36 build tools
+        shell: bash
+        run: |
+          set -euo pipefail
+          yes | sdkmanager --licenses >/dev/null || true
+          sdkmanager "platforms;android-36" "build-tools;36.0.0" "platform-tools"
+
+      - name: Set up Gradle 8.14.3
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.14.3'
+
+      - name: Fresh Gradle build
+        shell: bash
+        run: |
+          set -euo pipefail
+          gradle --no-daemon clean :app:assembleDebug --stacktrace
+
+      - name: Verify fresh APK
+        shell: bash
+        run: |
+          set -euo pipefail
+          APK=app/build/outputs/apk/debug/app-debug.apk
+          test -f "$APK"
+          "${ANDROID_HOME}/build-tools/36.0.0/zipalign" -c -P 16 -v 4 "$APK"
+          "${ANDROID_HOME}/build-tools/36.0.0/apksigner" verify --verbose --print-certs "$APK" | tee /tmp/signature.txt
+          BADGING="$("${ANDROID_HOME}/build-tools/36.0.0/aapt" dump badging "$APK")"
+          printf '%s\n' "$BADGING" | tee /tmp/badging.txt
+          grep -Fq "package: name='com.gasczoology.invertlabfresh183' versionCode='18383' versionName='1.8.3-freshdiag'" <<<"$BADGING"
+          grep -Fq "application-label:'INVERTEBRATA FRESH DIAG'" <<<"$BADGING"
+          unzip -p "$APK" assets/www/index.html > /tmp/apk-index.html
+          cmp --silent app/src/main/assets/www/index.html /tmp/apk-index.html
+          sha256sum "$APK" | tee /tmp/apk.sha256
+          {
+            echo 'Fresh Gradle diagnostic build'
+            echo 'Package: com.gasczoology.invertlabfresh183'
+            echo 'Version: 1.8.3-freshdiag / 18383'
+            echo 'Build path: Gradle source compile; not APK repackaging'
+            cat /tmp/apk.sha256
+          } > /tmp/verification.txt
+
+      - name: Stage diagnostic artifact
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p diagnostic-output
+          cp app/build/outputs/apk/debug/app-debug.apk diagnostic-output/INVERTEBRATA-v1.8.3-FRESH-GRADLE-DIAGNOSTIC.apk
+          cp /tmp/verification.txt diagnostic-output/VERIFICATION.txt
+          cp /tmp/signature.txt diagnostic-output/SIGNATURE.txt
+          cp /tmp/badging.txt diagnostic-output/BADGING.txt
+
+      - name: Upload fresh diagnostic APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: INVERTEBRATA-v1.8.3-FRESH-GRADLE-DIAGNOSTIC
+          path: diagnostic-output/
+          if-no-files-found: error
+          retention-days: 30
