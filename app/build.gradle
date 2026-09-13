@@ -7,11 +7,11 @@ android {
     compileSdk 36
 
     defaultConfig {
-        applicationId 'com.gasczoology.invertebratelab'
+        applicationId 'com.gasczoology.invertlabfresh183'
         minSdk 24
         targetSdk 36
-        versionCode 102
-        versionName '1.0.2'
+        versionCode 18383
+        versionName '1.8.3-freshdiag'
     }
 
     buildTypes {
@@ -29,4 +29,14 @@ android {
         sourceCompatibility JavaVersion.VERSION_17
         targetCompatibility JavaVersion.VERSION_17
     }
+
+    lint {
+        abortOnError true
+        checkReleaseBuilds true
+        warningsAsErrors false
+    }
+}
+
+dependencies {
+    implementation 'androidx.webkit:webkit:1.17.0'
 }
